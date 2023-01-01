@@ -179,7 +179,7 @@ class Game:
 
 		self.round = 0
 
-		self.players = [Player(f"Player{n}", ALGO_RANDOM if n>1 else ALGO_SMART) for n in range(nplayers)]
+		self.players = [Player(f"Spieler{n+1}", ALGO_RANDOM if n>1 else ALGO_SMART) for n in range(nplayers)]
 		self.turn = 0
 
 		self.totalturns = 0
