@@ -38,6 +38,9 @@ for line in BEANTEXT.split("\n"):
 
 beanstats = DotDict(beanstats)
 
+def t(s):
+	return s
+
 def howmanycoins(cardtype, cardnum):
 	if cardnum == 0:
 		return 0
@@ -96,18 +99,19 @@ class Player:
 
 		return toreturn
 
-	def choice(self, canplant, toplant):
+	def choice(self, toplant):
 		if self.algo == ALGO_RANDOM:
-			return self.choice_random(canplant, toplant)
+			return self.choice_random(toplant)
 		elif self.algo == ALGO_SMART:
-			return self.choice_smart(canplant, toplant)
+			return self.choice_smart(toplant)
 		else:
 			raise Exception(f"No such algorithm: {self.algo}")
 
-	def choice_random(self, canplant, toplant):
-		return choice(canplant)
+	def choice_random(self, toplant):
+		return choice(self.canplant())
 
-	def choice_smart(self, canplant, toplant):
+	def choice_smart(self, toplant):
+		canplant = self.canplant()
 		sameplant_fields = [index for index in canplant if len(self.fields[index]) > 0 and self.fields[index][0] == toplant]
 		empty_fields = [index for index in canplant if len(self.fields[index]) == 0]
 
@@ -122,7 +126,9 @@ class Player:
 INITIALCARDS = 5
 
 class Game:
-	def __init__(self, nplayers=5):
+	def __init__(self, nplayers=5, debug=False):
+		self.debug = debug
+
 		self.round = 0
 
 		self.players = [Player(f"Player{n}", ALGO_RANDOM if n>0 else ALGO_SMART) for n in range(nplayers)]
@@ -153,7 +159,7 @@ class Game:
 		self.discard = []
 		self.round += 1
 
-		if self.round == 2:
+		if self.round == 3:
 			# Game end
 
 			for player in self.players:
@@ -194,14 +200,13 @@ class Game:
 		active = self.players[self.turn]
 		toplant = active.cards.pop(0)
 
-
-		canplant = active.canplant()
-		index = active.choice(canplant, toplant)
+		index = active.choice(toplant)
 		self.discard += active.plant(index, toplant)
+		print(f"{active.name} {t('pflanzt')} {toplant}")
 
-		canplant = active.canplant()
-		index = active.choice(canplant, toplant)
+		index = active.choice(toplant)
 		self.discard += active.plant(index, toplant)
+		print(f"{active.name} {t('pflanzt')} {toplant}")
 
 		drawn = self.draw(2)
 		if drawn is None:
@@ -211,21 +216,19 @@ class Game:
 
 		while len(active.trading) > 0:
 			toplant = active.trading.pop(0)
-			canplant = active.canplant()
-			index = active.choice(canplant, toplant)
+			index = active.choice(toplant)
 			self.discard += active.plant(index, toplant)
+			print(f"{active.name} {t('pflanzt')} {toplant}")
 
 		drawn = self.draw(2)
 		if drawn is None:
 			return
 		active.cards += drawn
 
-		print(canplant)
-
 		self.turn = (self.turn + 1) % len(self.players)
 		self.totalturns += 1
 
-game = Game(nplayers=5)
+game = Game(nplayers=5, debug=True)
 
 while game.winner is None:
 	game.next()
