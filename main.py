@@ -123,6 +123,57 @@ class Player:
 
 		return choice(canplant)
 
+	def hasPlanted(self, card):
+		return card in [field[0] for field in self.fields if len(field)>0]
+
+	def getOffers(self):
+		if self.algo == ALGO_RANDOM:
+			return []
+		elif self.algo == ALGO_SMART:
+			return self.getOffers_smart()
+		else:
+			raise Exception(f"No such algorithm: {self.algo}")
+
+	def getOffers_smart(self):
+		return [card for card in self.trading if not self.hasPlanted(card)]
+
+	def getCounterOffers(self, offers):
+		if self.algo == ALGO_RANDOM:
+			return []
+		elif self.algo == ALGO_SMART:
+			return self.getCounterOffers_smart(offers)
+		else:
+			raise Exception(f"No such algorithm: {self.algo}")
+
+	def getCounterOffers_smart(self, offers):
+		counteroffer = []
+		for card in offers:
+			if self.hasPlanted(card):
+				for mycard in self.cards:
+					if not self.hasPlanted(mycard):
+						counteroffer.append({"buy": card, "sell": mycard})
+				counteroffer.append({"buy": card, "sell": None})
+		return counteroffer
+
+	def considerOffers(self, offers, counteroffers):
+		if self.algo == ALGO_RANDOM:
+			return []
+		elif self.algo == ALGO_SMART:
+			return self.considerOffers_smart(offers, counteroffers)
+		else:
+			raise Exception(f"No such algorithm: {self.algo}")
+
+	def considerOffers_smart(self, offers, counteroffers):
+		for player, counteroffer in counteroffers.items():
+			for coffer in counteroffer:
+				if self.hasPlanted(coffer["sell"]):
+					if coffer["buy"] in self.trading and coffer["sell"] in player.cards:
+						print(f"{self.name} verkauft seine {coffer['buy']} an {player.name} für {coffer['sell']}")
+						self.trading.remove(coffer["buy"])
+						self.trading.append(coffer["sell"])
+						player.cards.remove(coffer["sell"])
+						player.cards.append(coffer["buy"])
+
 INITIALCARDS = 5
 
 class Game:
@@ -131,7 +182,7 @@ class Game:
 
 		self.round = 0
 
-		self.players = [Player(f"Player{n}", ALGO_RANDOM if n>0 else ALGO_SMART) for n in range(nplayers)]
+		self.players = [Player(f"Player{n}", ALGO_RANDOM if n>1 else ALGO_SMART) for n in range(nplayers)]
 		self.turn = 0
 
 		self.totalturns = 0
@@ -167,7 +218,7 @@ class Game:
 					player.harvest(index)
 
 			self.winner = max(self.players, key=lambda player:player.treasury)
-			print(f"{self.winner.name} won the game after {self.totalturns} turns!")
+			print(f"{self.winner.name} hat das Spiel nach {self.totalturns} Runden gewonnen!")
 			for name, coins in Counter({player.name:player.treasury for player in self.players}).most_common():
 				print(f"{coins}\t{name}")
 			return True
@@ -213,6 +264,22 @@ class Game:
 			return
 		active.trading = drawn
 		# TODO trading
+		offers = active.getOffers()
+
+		if offers:
+			print(f"{active.name} bietet {offers}")
+			counteroffers = {}
+			for player in self.players:
+				if player == active:
+					continue
+				counteroffer = player.getCounterOffers(offers)
+				if len(counteroffer) > 0:
+					print(f"{player.name} bietet {counteroffer}")
+				counteroffers[player] = counteroffer
+
+			active.considerOffers(offers, counteroffers)
+		else:
+			print(f"{active.name} möchte nicht handeln")
 
 		while len(active.trading) > 0:
 			toplant = active.trading.pop(0)
@@ -228,7 +295,7 @@ class Game:
 		self.turn = (self.turn + 1) % len(self.players)
 		self.totalturns += 1
 
-game = Game(nplayers=5, debug=True)
+game = Game(nplayers=3, debug=True)
 
 while game.winner is None:
 	game.next()
