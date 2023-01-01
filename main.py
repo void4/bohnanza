@@ -155,24 +155,25 @@ class Player:
 				counteroffer.append({"buy": card, "sell": None})
 		return counteroffer
 
-	def considerOffers(self, offers, counteroffers):
+	def considerOffers(self, counteroffers):
 		if self.algo == ALGO_RANDOM:
 			return []
 		elif self.algo == ALGO_SMART:
-			return self.considerOffers_smart(offers, counteroffers)
+			return self.considerOffers_smart(counteroffers)
 		else:
 			raise Exception(f"No such algorithm: {self.algo}")
 
-	def considerOffers_smart(self, offers, counteroffers):
+	def considerOffers_smart(self, counteroffers):
 		for player, counteroffer in counteroffers.items():
 			for coffer in counteroffer:
-				if self.hasPlanted(coffer["sell"]):
+				if self.hasPlanted(coffer["sell"]) or coffer["sell"] is None:#TODO should consider good trade first
 					if coffer["buy"] in self.trading and coffer["sell"] in player.cards:
 						print(f"{self.name} verkauft seine {coffer['buy']} an {player.name} für {coffer['sell']}")
 						self.trading.remove(coffer["buy"])
-						self.trading.append(coffer["sell"])
-						player.cards.remove(coffer["sell"])
 						player.cards.append(coffer["buy"])
+						if coffer["sell"] is not None:
+							self.trading.append(coffer["sell"])
+							player.cards.remove(coffer["sell"])
 
 INITIALCARDS = 5
 
@@ -277,7 +278,7 @@ class Game:
 					print(f"{player.name} bietet {counteroffer}")
 				counteroffers[player] = counteroffer
 
-			active.considerOffers(offers, counteroffers)
+			active.considerOffers(counteroffers)
 		else:
 			print(f"{active.name} möchte nicht handeln")
 
@@ -295,7 +296,7 @@ class Game:
 		self.turn = (self.turn + 1) % len(self.players)
 		self.totalturns += 1
 
-game = Game(nplayers=3, debug=True)
+game = Game(nplayers=5, debug=True)
 
 while game.winner is None:
 	game.next()
