@@ -1,8 +1,6 @@
 from random import shuffle, choice
 from collections import Counter
 
-from dotdict import DotDict
-
 BEANTEXT = """Coffee Bean	Kaffeebohne	24	4	7	10	12
 Wax Bean	Weinbrandbohne	22	4	7	9	11
 Blue Bean	Blaue Bohne	20	4	6	8	10
@@ -36,8 +34,6 @@ for line in BEANTEXT.split("\n"):
 		"h4": dashtonone(h4),
 	}
 
-beanstats = DotDict(beanstats)
-
 def t(s):
 	return s
 
@@ -47,7 +43,7 @@ def howmanycoins(cardtype, cardnum):
 
 	bs = beanstats[cardtype]
 	lastindex = None
-	for index, count in enumerate([bs.h1, bs.h2, bs.h3, bs.h4]):
+	for index, count in enumerate([bs["h1"], bs["h2"], bs["h3"], bs["h4"]]):
 		if count is not None and cardnum >= count:
 			lastindex = index
 
