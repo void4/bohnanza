@@ -183,6 +183,7 @@ class Game:
 		self.turn = 0
 
 		self.totalturns = 0
+		self.totalrounds = 0
 
 		self.deck = []
 		self.discard = []
@@ -215,7 +216,7 @@ class Game:
 					player.harvest(index)
 
 			self.winner = max(self.players, key=lambda player:player.treasury)
-			print(f"{self.winner.name} hat das Spiel nach {self.totalturns} Runden gewonnen!")
+			print(f"{self.winner.name} hat das Spiel nach {self.totalrounds} Runden gewonnen!")
 			for name, coins in Counter({player.name:player.treasury for player in self.players}).most_common():
 				print(f"{coins}\t{name}")
 			return True
@@ -291,6 +292,8 @@ class Game:
 
 		self.turn = (self.turn + 1) % len(self.players)
 		self.totalturns += 1
+		if self.turn == 0:
+			self.totalrounds += 1
 
 game = Game(nplayers=5, debug=True)
 
