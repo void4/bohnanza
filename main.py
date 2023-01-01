@@ -72,23 +72,29 @@ class Player:
 			return [f for f, field in enumerate(self.fields) if len(field) != 1]
 
 	def harvest(self, index):
+		toreturn = []
 		field = self.fields[index]
 		if len(field) > 0:
 			cardtype = field[0]
 			cardnum = len(field)
 			self.treasury += howmanycoins(cardtype, cardnum)
+			toreturn = self.fields[index]
 			self.fields[index] = []
+		return toreturn
 
 	def plant(self, index, toplant):
 		field = self.fields[index]
+		toreturn = []
 		if len(field) > 0:
 			if field[0] != toplant:
-				self.harvest(index)
+				toreturn = self.harvest(index)
 				self.fields[index] = [toplant]
 			else:
 				field.append(toplant)
 		else:
 			self.fields[index] = [toplant]
+
+		return toreturn
 
 	def choice(self, canplant, toplant):
 		if self.algo == ALGO_RANDOM:
@@ -191,11 +197,11 @@ class Game:
 
 		canplant = active.canplant()
 		index = active.choice(canplant, toplant)
-		active.plant(index, toplant)
+		self.discard += active.plant(index, toplant)
 
 		canplant = active.canplant()
 		index = active.choice(canplant, toplant)
-		active.plant(index, toplant)
+		self.discard += active.plant(index, toplant)
 
 		drawn = self.draw(2)
 		if drawn is None:
@@ -207,7 +213,7 @@ class Game:
 			toplant = active.trading.pop(0)
 			canplant = active.canplant()
 			index = active.choice(canplant, toplant)
-			active.plant(index, toplant)
+			self.discard += active.plant(index, toplant)
 
 		drawn = self.draw(2)
 		if drawn is None:
