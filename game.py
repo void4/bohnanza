@@ -1,4 +1,4 @@
-from random import shuffle, choice
+from random import shuffle, choice, sample
 from collections import Counter
 
 BEANTEXT = """Blue Bean	Blaue Bohne	20	4	6	8	10
@@ -296,7 +296,7 @@ class Game:
 		if self.offers:
 			self.log(f"{self.active.name} bietet {self.offers}")
 			counteroffers = {}
-			for player in self.players:
+			for player in sample(self.players, len(self.players)):
 				if player == self.active:
 					continue
 				counteroffer = player.getCounterOffers(self.offers)
