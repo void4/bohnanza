@@ -4,7 +4,7 @@ import pygame
 
 from game import Game, beanstats
 
-game = Game(nplayers=5, debug=True)
+game = Game(nplayers=5, debug=False)
 
 pygame.init()
 pygame.display.set_caption("Bohnanza")

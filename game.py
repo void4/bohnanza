@@ -109,7 +109,7 @@ class Player:
 
 	def choice_smart(self, toplant, optional):
 		canplant = self.canplant()
-		sameplant_fields = [index for index in canplant if len(self.fields[index]) > 0 and self.fields[index][0] == toplant]
+		sameplant_fields = [index for index, field in enumerate(self.fields) if len(field) > 0 and field[0] == toplant]
 		empty_fields = [index for index in canplant if len(self.fields[index]) == 0]
 
 		if len(sameplant_fields) > 0:
@@ -164,16 +164,22 @@ class Player:
 			raise Exception(f"No such algorithm: {self.algo}")
 
 	def considerOffers_smart(self, counteroffers):
+		accepted = []
+		temptrading = self.trading.copy()
 		for player, counteroffer in counteroffers.items():
+			tempcards = player.cards.copy()
 			for coffer in counteroffer:
 				if self.hasPlanted(coffer["sell"]) or coffer["sell"] is None:#TODO should consider good trade first
-					if coffer["buy"] in self.trading and coffer["sell"] in player.cards:
-						print(f"{self.name} verkauft seine {coffer['buy']} an {player.name} für {coffer['sell']}")
-						self.trading.remove(coffer["buy"])
-						player.cards.append(coffer["buy"])
+					if coffer["buy"] in temptrading and coffer["sell"] in tempcards:
+						temptrading.remove(coffer["buy"])
+						tempcards.append(coffer["buy"])
 						if coffer["sell"] is not None:
-							self.trading.append(coffer["sell"])
-							player.cards.remove(coffer["sell"])
+							temptrading.append(coffer["sell"])
+							tempcards.remove(coffer["sell"])
+						coffer["player"] = player
+						accepted.append(coffer)
+
+		return accepted
 
 INITIALCARDS = 5
 
@@ -207,27 +213,39 @@ class Game:
 
 		self.winner = None
 
+	def log(self, s):
+		if self.debug:
+			print(s)
+
 	def newround(self):
 
-		shuffle(self.discard)
-		self.deck = self.discard
-		self.discard = []
-		self.round += 1
-
-		if self.round == 3:
+		if self.round < 3:
+			shuffle(self.discard)
+			self.deck = self.discard
+			self.discard = []
+			self.round += 1
+			return False
+		else:
 			# Game end
 
 			for player in self.players:
+				self.discard += player.cards
+				player.cards = []
 				for index in range(len(player.fields)):
-					player.harvest(index)
+					self.discard += player.harvest(index)
 
 			self.winner = max(self.players, key=lambda player:player.treasury)
-			print(f"{self.winner.name} hat das Spiel nach {self.totalrounds} Runden gewonnen!")
+			self.log(f"{self.winner.name} hat das Spiel nach {self.totalrounds} Runden gewonnen!")
 			for name, coins in Counter({player.name:player.treasury for player in self.players}).most_common():
-				print(f"{coins}\t{name}")
+				self.log(f"{coins}\t{name}")
+
+			totalcoins = sum(player.treasury for player in self.players)
+			print(totalcoins + len(self.discard))
+			# TODO one card still can go somehow missing
+
 			return True
 
-		return False
+
 
 	def draw(self, n=1):
 
@@ -236,6 +254,7 @@ class Game:
 			if len(self.deck) == 0:
 				gameend = self.newround()
 				if gameend:
+					self.discard.append(cardtype)
 					return None
 			return cardtype
 		else:
@@ -247,6 +266,7 @@ class Game:
 			if newround:
 				gameend = self.newround()
 				if gameend:
+					self.discard += cards
 					return None
 
 			return cards
@@ -255,7 +275,7 @@ class Game:
 		toplant = self.active.cards.pop(0)
 		index = self.active.choice(toplant)
 		self.discard += self.active.plant(index, toplant)
-		print(f"{self.active.name} {t('pflanzt')} {toplant}")
+		self.log(f"{self.active.name} {t('pflanzt')} {toplant}")
 
 	def step_1(self):
 		toplant = self.active.cards[0]
@@ -263,7 +283,7 @@ class Game:
 		if index is not None:
 			toplant = self.active.cards.pop(0)
 			self.discard += self.active.plant(index, toplant)
-			print(f"{self.active.name} {t('pflanzt')} {toplant}")
+			self.log(f"{self.active.name} {t('pflanzt')} {toplant}")
 
 	def step_2(self):
 		drawn = self.draw(2)
@@ -275,26 +295,34 @@ class Game:
 
 	def step_3(self):
 		if self.offers:
-			print(f"{self.active.name} bietet {self.offers}")
+			self.log(f"{self.active.name} bietet {self.offers}")
 			counteroffers = {}
 			for player in self.players:
 				if player == self.active:
 					continue
 				counteroffer = player.getCounterOffers(self.offers)
 				if len(counteroffer) > 0:
-					print(f"{player.name} bietet {counteroffer}")
+					self.log(f"{player.name} bietet {counteroffer}")
 				counteroffers[player] = counteroffer
 
-			self.active.considerOffers(counteroffers)
+			accepted = self.active.considerOffers(counteroffers)
+			for coffer in accepted:
+				if coffer["buy"] in self.active.trading and coffer["sell"] in coffer["player"].cards:
+					#self.log(f"{self.name} verkauft seine {coffer['buy']} an {player.name} für {coffer['sell']}")
+					self.active.trading.remove(coffer["buy"])
+					coffer["player"].cards.append(coffer["buy"])
+					if coffer["sell"] is not None:
+						self.active.trading.append(coffer["sell"])
+						coffer["player"].cards.remove(coffer["sell"])
 		else:
-			print(f"{self.active.name} möchte nicht handeln")
+			self.log(f"{self.active.name} möchte nicht handeln")
 
 	def step_4(self):
 		while len(self.active.trading) > 0:
 			toplant = self.active.trading.pop(0)
 			index = self.active.choice(toplant)
 			self.discard += self.active.plant(index, toplant)
-			print(f"{self.active.name} {t('pflanzt')} {toplant}")
+			self.log(f"{self.active.name} {t('pflanzt')} {toplant}")
 
 	def step_5(self):
 		drawn = self.draw(2)
