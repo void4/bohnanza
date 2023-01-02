@@ -76,8 +76,9 @@ class Player:
 		if len(field) > 0:
 			cardtype = field[0]
 			cardnum = len(field)
-			self.treasury += howmanycoins(cardtype, cardnum)
-			toreturn = self.fields[index]
+			coins = howmanycoins(cardtype, cardnum)
+			self.treasury += coins
+			toreturn = self.fields[index][coins:]
 			self.fields[index] = []
 		return toreturn
 
@@ -95,18 +96,18 @@ class Player:
 
 		return toreturn
 
-	def choice(self, toplant):
+	def choice(self, toplant, optional=False):
 		if self.algo == ALGO_RANDOM:
-			return self.choice_random(toplant)
+			return self.choice_random(toplant, optional)
 		elif self.algo == ALGO_SMART:
-			return self.choice_smart(toplant)
+			return self.choice_smart(toplant, optional)
 		else:
 			raise Exception(f"No such algorithm: {self.algo}")
 
-	def choice_random(self, toplant):
+	def choice_random(self, toplant, optional):
 		return choice(self.canplant())
 
-	def choice_smart(self, toplant):
+	def choice_smart(self, toplant, optional):
 		canplant = self.canplant()
 		sameplant_fields = [index for index in canplant if len(self.fields[index]) > 0 and self.fields[index][0] == toplant]
 		empty_fields = [index for index in canplant if len(self.fields[index]) == 0]
@@ -117,7 +118,10 @@ class Player:
 		if len(empty_fields) > 0:
 			return empty_fields[0]
 
-		return choice(canplant)
+		if optional:
+			return None
+		else:
+			return choice(canplant)
 
 	def hasPlanted(self, card):
 		return card in [field[0] for field in self.fields if len(field)>0]
@@ -179,7 +183,7 @@ class Game:
 
 		self.round = 0
 
-		self.players = [Player(f"Spieler{n+1}", ALGO_RANDOM if n>1 else ALGO_SMART) for n in range(nplayers)]
+		self.players = [Player(f"Spieler{n+1}", ALGO_SMART) for n in range(nplayers)]
 		self.turn = 0
 		self.active = self.players[self.turn]
 		self.step = 0
@@ -254,10 +258,12 @@ class Game:
 		print(f"{self.active.name} {t('pflanzt')} {toplant}")
 
 	def step_1(self):
-		toplant = self.active.cards.pop(0)
-		index = self.active.choice(toplant)
-		self.discard += self.active.plant(index, toplant)
-		print(f"{self.active.name} {t('pflanzt')} {toplant}")
+		toplant = self.active.cards[0]
+		index = self.active.choice(toplant, optional=True)
+		if index is not None:
+			toplant = self.active.cards.pop(0)
+			self.discard += self.active.plant(index, toplant)
+			print(f"{self.active.name} {t('pflanzt')} {toplant}")
 
 	def step_2(self):
 		drawn = self.draw(2)
