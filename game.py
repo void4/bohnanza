@@ -189,7 +189,7 @@ class Game:
 
 		self.round = 0
 
-		self.players = [Player(f"Spieler{n+1}", ALGO_SMART) for n in range(nplayers)]
+		self.players = [Player(f"Spieler{n+1}", ALGO_SMART if n < 2 else ALGO_RANDOM) for n in range(nplayers)]
 		self.turn = 0
 		self.active = self.players[self.turn]
 		self.step = 0
@@ -217,7 +217,7 @@ class Game:
 		if self.debug:
 			print(s)
 
-	def newround(self):
+	def newround(self, leftovers):
 
 		if self.round < 3:
 			shuffle(self.discard)
@@ -227,6 +227,7 @@ class Game:
 			return False
 		else:
 			# Game end
+			self.discard += leftovers
 
 			for player in self.players:
 				self.discard += player.cards
@@ -252,9 +253,8 @@ class Game:
 		if n == 1:
 			cardtype = self.deck.pop(0)
 			if len(self.deck) == 0:
-				gameend = self.newround()
+				gameend = self.newround([cardtype])
 				if gameend:
-					self.discard.append(cardtype)
 					return None
 			return cardtype
 		else:
@@ -262,11 +262,10 @@ class Game:
 			if len(self.deck) < n:
 				n = len(self.deck)
 				newround = True
-			cards = [self.deck.pop(0) for i in range(n)]
+			cards = [self.deck.pop(0) for i in range(n)]#Does the player actually get less here, or wait until reshuffle?
 			if newround:
-				gameend = self.newround()
+				gameend = self.newround(cards)
 				if gameend:
-					self.discard += cards
 					return None
 
 			return cards
@@ -308,7 +307,7 @@ class Game:
 			accepted = self.active.considerOffers(counteroffers)
 			for coffer in accepted:
 				if coffer["buy"] in self.active.trading and coffer["sell"] in coffer["player"].cards:
-					#self.log(f"{self.name} verkauft seine {coffer['buy']} an {player.name} für {coffer['sell']}")
+					self.log(f"{self.active.name} verkauft seine {coffer['buy']} an {coffer['player'].name} für {coffer['sell']}")
 					self.active.trading.remove(coffer["buy"])
 					coffer["player"].cards.append(coffer["buy"])
 					if coffer["sell"] is not None:
